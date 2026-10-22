@@ -13,10 +13,10 @@ Free tier bisa tidur saat tidak aktif; request pertama setelah idle dapat memerl
 ## Langkah setup
 
 1. Buat proyek PostgreSQL di [Neon](https://console.neon.tech/). Ambil URL koneksi dengan pooling aktif untuk `DATABASE_URL`, dan URL koneksi direct/non-pooled untuk `DATABASE_MIGRATION_URL`. Keduanya harus memakai `sslmode=require`. Simpan sebagai secret; jangan commit ke Git.
-2. Buka [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https%3A%2F%2Fgithub.com%2Friiddev%2Fgemini) setelah file `render.yaml` tersedia di branch `main`. Tinjau konfigurasi dan buat service gratis.
-3. Saat Render meminta variabel yang belum tersinkron, isi dua URL PostgreSQL dari langkah 1.
-4. Isi `BETTER_AUTH_URL` di Render dengan origin web service yang sebenarnya, misalnya `https://latveria-riiddev.onrender.com` (gunakan URL yang ditampilkan Render, bukan contoh ini jika nama domain berbeda).
-5. Setelah deployment READY, buka `/api/health`; respons yang diharapkan adalah `{"status":"ok"}`. Periksa log Render jika migrasi awal gagal.
+2. Buka [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https%3A%2F%2Fgithub.com%2Friiddev%2Fgemini) setelah file `render.yaml` tersedia di branch `main`. Pastikan GitHub repo `riiddev/gemini` dan branch `main` dipilih.
+3. Saat Render meminta variabel yang belum tersinkron, isi `DATABASE_URL` dengan URL pooled dan `DATABASE_MIGRATION_URL` dengan URL direct dari Neon. Render menghasilkan `BETTER_AUTH_SECRET` otomatis.
+4. Dockerfile mengambil origin autentikasi dari `RENDER_EXTERNAL_URL` yang disediakan Render, jadi URL domain tidak perlu ditulis atau ditebak secara manual.
+5. Pilih paket **Free** dan tinjau resource yang akan dibuat sebelum klik Deploy. Setelah deployment READY, buka `https://<domain-render>/api/health`; respons yang diharapkan adalah `{"status":"ok"}`. Periksa log Render jika migrasi awal gagal.
 
 ## Membuat admin pertama
 
