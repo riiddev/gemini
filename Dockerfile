@@ -33,5 +33,6 @@ WORKDIR /app/apps/api
 USER bun
 EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD bun -e "fetch('http://127.0.0.1:10000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+# Derive the auth origin from Render's public URL if it is not explicitly set.
 # Apply safe, idempotent DB migrations and seed the initial example question bank.
-CMD ["sh", "-c", "bun scripts/migrate-db.ts && bun scripts/seed-db.ts && exec bun src/index.ts"]
+CMD ["sh", "-c", "export BETTER_AUTH_URL=\"${BETTER_AUTH_URL:-${RENDER_EXTERNAL_URL:-}}\"; test -n \"$BETTER_AUTH_URL\" || { echo 'BETTER_AUTH_URL/RENDER_EXTERNAL_URL is required'; exit 1; }; bun scripts/migrate-db.ts && bun scripts/seed-db.ts && exec bun src/index.ts"]
