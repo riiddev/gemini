@@ -37,7 +37,8 @@ jobs:
             mkdir -p "$(dirname "$target")"
             cp "$overlay" "$target"
           done < <(find .vercel-overlay -type f -print0)
-          rm -rf .vercel-overlay latveria-main.zip Dockerfile render.yaml DEPLOY-FREE.md .github/workflows/unpack-source.yml
+          rm -rf .vercel-overlay latveria-main.zip Dockerfile render.yaml DEPLOY-FREE.md
+          rm -f .github/workflows/ci.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A

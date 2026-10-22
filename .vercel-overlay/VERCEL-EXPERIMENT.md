@@ -11,3 +11,5 @@ This repository is an independent experiment copy. The Vercel build intentionall
 The mode can be explicitly enabled with VITE_DEMO_MODE=true. Do not disable demo mode on a static Vercel deployment until a working API is available.
 
 To reset local demo data, clear this site's browser storage.
+
+The one-time unpack workflow is kept separate from the app source files so it can finish without changing workflow permissions.
