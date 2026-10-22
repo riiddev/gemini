@@ -24,4 +24,4 @@ services:
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: BETTER_AUTH_URL
-        value: https://latveria-riiddev.onrender.com
+        sync: false
