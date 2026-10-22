@@ -33,7 +33,7 @@ jobs:
           fi
           cp -a "$source_root"/. .
           while IFS= read -r -d '' overlay; do
-            target="${overlay#./.vercel-overlay/}"
+            target="${overlay#.vercel-overlay/}"
             mkdir -p "$(dirname "$target")"
             cp "$overlay" "$target"
           done < <(find .vercel-overlay -type f -print0)

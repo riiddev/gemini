@@ -9,3 +9,5 @@ This repository is an independent experiment copy. The Vercel build intentionall
 - Real account authentication, cross-device profiles, multiplayer/WebSocket features, saved server-side questions/results, avatar uploads, and production TeX rendering are not connected in this demo.
 
 The mode can be explicitly enabled with VITE_DEMO_MODE=true. Do not disable demo mode on a static Vercel deployment until a working API is available.
+
+To reset local demo data, clear this site's browser storage.
