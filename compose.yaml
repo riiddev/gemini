@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: latveria
+      POSTGRES_PASSWORD: latveria
+      POSTGRES_DB: latveria
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U latveria -d latveria"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  adminer:
+    image: adminer:5.4.1
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio:RELEASE.2024-08-26T15-33-07Z
+    entrypoint:
+      - sh
+      - -c
+      - mkdir -p /data/$${S3_BUCKET:-latveria-avatars} && /usr/bin/docker-entrypoint.sh server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-latveria}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-latveria123}
+      S3_BUCKET: ${S3_BUCKET:-latveria-avatars}
+    ports:
+      - "${MINIO_BIND:-127.0.0.1}:${MINIO_PORT:-9002}:9000"
+      - "${MINIO_BIND:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9003}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+
+  tex-worker:
+    build:
+      context: .
+      dockerfile: apps/tex-worker/Dockerfile
+    environment:
+      PORT: 3002
+    ports:
+      - "127.0.0.1:3002:3002"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:

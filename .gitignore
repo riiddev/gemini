@@ -1,0 +1,13 @@
+node_modules/
+.next/
+dist/
+out/
+coverage/
+*.tsbuildinfo
+.env*
+!.env.example
+.vercel/
+.playwright-mcp/
+AGENTS.md
+PLAN.md
+session-ses*
