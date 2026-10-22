@@ -227,7 +227,7 @@ export const ProfileView = () => {
                   LEVEL {user.level < 10 ? `0${user.level}` : user.level}
                 </span>
                 <span>
-                  {user.currentXP.toLocaleString()} / {user.nextLevelXP.toLocaleString()} XP (
+                  {(Number(user.currentXP) || 0).toLocaleString()} / {(Number(user.nextLevelXP) || 0).toLocaleString()} XP (
                   {xpPercentage}%)
                 </span>
               </div>
