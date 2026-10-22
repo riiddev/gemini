@@ -13,3 +13,11 @@ The mode can be explicitly enabled with VITE_DEMO_MODE=true. Do not disable demo
 To reset local demo data, clear this site's browser storage.
 
 The one-time unpack workflow is kept separate from the app source files so it can finish without changing workflow permissions.
+
+## Deploy settings
+
+For the Vercel project, use the repository root as the Root Directory, the Bun lockfile install command, the web workspace build command, and `apps/web/dist` as the output directory.
+
+- Install: `bun install --frozen-lockfile`
+- Build: `bun run --filter '@latveria/web' build`
+- Output: `apps/web/dist`
