@@ -1,0 +1,145 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
+import { credentialsSchema, signupSchema, type User } from "@latveria/shared";
+import { api } from "../lib/api";
+import { IS_DEMO_MODE } from "../lib/demo-mode";
+import { authClient } from "../lib/auth-client";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Brand } from "../components/ui/dashboard";
+import { ThemeToggle } from "../components/theme-toggle";
+import { Eye, EyeOff } from "lucide-react";
+
+export function Login() {
+  const navigate = useNavigate();
+  const [register, setRegister] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/registration", { signal: controller.signal })
+      .then((response) => response.json())
+      .then((data: { enabled: boolean }) => setRegistrationEnabled(data.enabled))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  if (IS_DEMO_MODE) {
+    return (
+      <main className="mx-auto grid min-h-dvh max-w-xl content-center gap-6 px-6 py-12 motion-page-enter">
+        <div className="flex items-center justify-between">
+          <Brand />
+          <ThemeToggle />
+        </div>
+        <p className="font-mono text-xs tracking-widest text-[var(--accent-gold)]">MODE EKSPERIMEN</p>
+        <h1 className="!mb-0 !text-5xl text-[var(--ink)]" style={{ fontFamily: "var(--font-serif)" }}>
+          Coba ruang belajar
+        </h1>
+        <p className="text-[var(--soft-ink)]">
+          Versi ini berjalan tanpa akun online. Masuk sebagai peserta demo untuk mencoba dashboard dan paket drilling; progres tersimpan di browser ini.
+        </p>
+        <Button type="button" onClick={() => navigate("/dashboard")}>
+          Masuk ke Zona Belajar
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => navigate("/")}>
+          Kembali ke beranda
+        </Button>
+      </main>
+    );
+  }
+  return (
+    <main className="mx-auto grid min-h-dvh max-w-xl content-center gap-6 px-6 py-12 motion-page-enter">
+      <div className="flex items-center justify-between">
+        <Brand />
+        <ThemeToggle />
+      </div>
+      <h1 className="!mb-0 !text-5xl text-[var(--ink)]" style={{ fontFamily: "var(--font-serif)" }}>
+        {register ? "Daftar akun" : "Masuk ruang belajar"}
+      </h1>
+      <form
+        className="grid gap-4 border border-[var(--edge)] bg-[var(--surface)] p-6 rounded-md shadow-sm motion-fade-up"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          setError("");
+          const form = new FormData(event.currentTarget);
+          const body = {
+            email: String(form.get("email")),
+            password: String(form.get("password")),
+            name: String(form.get("name") ?? ""),
+          };
+          const parsed = (register ? signupSchema : credentialsSchema).safeParse(body);
+          if (!parsed.success) {
+            setError(parsed.error.issues[0].message);
+            return;
+          }
+          setPending(true);
+          try {
+            const result = register
+              ? await authClient.signUp.email(body)
+              : await authClient.signIn.email(body);
+            if (result.error)
+              throw new Error(
+                register ? "Pendaftaran gagal." : "Email atau kata sandi tidak cocok.",
+              );
+            const user = await api<User>("/me");
+            navigate(user.role === "admin" ? "/admin" : "/dashboard");
+          } catch (error) {
+            setError(error instanceof Error ? error.message : "Gagal masuk.");
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        {register && (
+          <label className="grid gap-1 text-[var(--ink)] font-medium">
+            Nama
+            <Input name="name" required autoComplete="name" />
+          </label>
+        )}
+        <label className="grid gap-1 text-[var(--ink)] font-medium">
+          Email
+          <Input name="email" type="email" required autoComplete="email" />
+        </label>
+        <label className="grid gap-1 text-[var(--ink)] font-medium">
+          Kata sandi
+          <span className="relative">
+            <Input
+              className="w-full pr-12"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              autoComplete={register ? "new-password" : "current-password"}
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-1 grid min-w-11 place-items-center text-[var(--soft-ink)] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--emerald)]"
+              aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((visible) => !visible)}
+            >
+              {showPassword ? (
+                <EyeOff size={18} aria-hidden="true" />
+              ) : (
+                <Eye size={18} aria-hidden="true" />
+              )}
+            </button>
+          </span>
+        </label>
+        {error && (
+          <p role="alert" className="text-red-500 text-sm motion-fade-in">
+            {error}
+          </p>
+        )}
+        <Button disabled={pending} loading={pending}>
+          {register ? "Daftar" : "Masuk"}
+        </Button>
+        {registrationEnabled && (
+          <Button variant="ghost" type="button" onClick={() => setRegister(!register)}>
+            {register ? "Sudah punya akun? Masuk" : "Belum punya akun? Daftar"}
+          </Button>
+        )}
+      </form>
+    </main>
+  );
+}

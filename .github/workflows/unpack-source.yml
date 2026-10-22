@@ -1,0 +1,47 @@
+name: Prepare source for Vercel experiment
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".vercel-overlay/**"
+permissions:
+  contents: write
+jobs:
+  unpack-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Unpack original Latveria source and apply demo changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f latveria-main.zip ] || [ ! -d .vercel-overlay ]; then
+            echo "Source archive or overlay is already removed; nothing to do."
+            exit 0
+          fi
+          mkdir -p /tmp/latveria-unpack
+          unzip -q latveria-main.zip -d /tmp/latveria-unpack
+          source_root=/tmp/latveria-unpack
+          if [ ! -f "$source_root/apps/web/package.json" ]; then
+            source_root="$(find /tmp/latveria-unpack -mindepth 1 -maxdepth 4 -type f -path '*/apps/web/package.json' -print -quit | sed 's#/apps/web/package.json$##')"
+          fi
+          if [ -z "$source_root" ] || [ ! -f "$source_root/apps/web/package.json" ]; then
+            echo "Could not locate apps/web/package.json in the source archive."
+            exit 1
+          fi
+          cp -a "$source_root"/. .
+          while IFS= read -r -d '' overlay; do
+            target="${overlay#./.vercel-overlay/}"
+            mkdir -p "$(dirname "$target")"
+            cp "$overlay" "$target"
+          done < <(find .vercel-overlay -type f -print0)
+          rm -rf .vercel-overlay latveria-main.zip Dockerfile render.yaml DEPLOY-FREE.md .github/workflows/unpack-source.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: unpack Latveria source for Vercel experiments"
+            git push origin HEAD:main
+          fi
