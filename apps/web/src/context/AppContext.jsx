@@ -56,9 +56,196 @@ function topicToSubject(topic) {
     name: topic.name,
     code: short.startsWith("SNBT-") ? short : `LTV-${short.toUpperCase()}`,
     category,
-    questionsCount: topic.qu
-…[1 chars truncated — re-run with head/grep/tail for full output]…
-ackend authenticated user + fetch topics/summary/history
+    questionsCount: topic.questionCount,
+    packageCount: Number(topic.packageCount ?? 0),
+    progress: null,
+    accuracy: null,
+    description: topic.description,
+  };
+}
+
+/** Convert API PracticeQuestion to mock shape the view uses */
+function apiQuestionToView(q) {
+  return {
+    id: q.id, // UUID
+    question: q.prompt,
+    passage: q.passage ?? null,
+    annotations: q.annotations ?? [],
+    options: q.options.map((text, i) => ({ key: INDEX_TO_KEY[i], text })),
+    // correctAnswer and explanation not available during practice (API strips them)
+    correctAnswer: null,
+    explanation: null,
+  };
+}
+
+/** Merge review data into session questions after submission */
+function mergeReviewData(sessionQuestions, reviewAnswers) {
+  const byId = new Map(reviewAnswers.map((ra) => [ra.id, ra]));
+  return sessionQuestions.map((sq) => {
+    const ra = byId.get(sq.id);
+    if (!ra) return sq;
+    return {
+      ...sq,
+      passage: ra.passage ?? sq.passage ?? null,
+      correctAnswer: INDEX_TO_KEY[ra.correctAnswer],
+      explanation: ra.explanation,
+      annotations: ra.annotations ?? sq.annotations ?? [],
+      // keep original options from practice (same order)
+    };
+  });
+}
+
+export const AppProvider = ({ children }) => {
+  // Navigation State
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [params] = useSearchParams();
+  const tab = params.get("tab") || "dashboard";
+  const currentTab = pathname.startsWith("/dashboard/riwayat")
+    ? "practice"
+    : [
+          "dashboard",
+          "practice",
+          "warrior",
+          "library",
+          "tryout",
+          "leaderboard",
+          "profile",
+          "settings",
+        ].includes(tab)
+      ? tab
+      : "dashboard";
+  const setCurrentTab = useCallback((next) => navigate(`/dashboard?tab=${next}`), [navigate]);
+
+  // Sidebar collapse state — default terbuka di desktop, tertutup di mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (window.innerWidth <= 768) return false;
+    const saved = localStorage.getItem("latveria_sidebar");
+    if (saved !== null) return saved === "true";
+    return true;
+  });
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      if (window.innerWidth > 768) localStorage.setItem("latveria_sidebar", String(next));
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 768px)");
+    const syncSidebar = () =>
+      setSidebarOpen(mobile.matches ? false : localStorage.getItem("latveria_sidebar") !== "false");
+    mobile.addEventListener("change", syncSidebar);
+    return () => mobile.removeEventListener("change", syncSidebar);
+  }, []);
+
+  // Theme State
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("latveria_theme");
+    return saved === "light" ? "parchment" : saved || "dark";
+  });
+
+  // Sound feedback toggle
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem("latveria_sound");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  // User State
+  const [user, setUser] = useState(DEFAULT_USER);
+
+  // Topics from the API are the source of the learner catalog.
+  const [topics, setTopics] = useState([]);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [topicsError, setTopicsError] = useState("");
+
+  // Learner summary from API
+  const [summary, setSummary] = useState(null);
+  // Learner history from API
+  const [history, setHistory] = useState([]);
+
+  // Notifications / Toast
+  const [toasts, setToasts] = useState([]);
+
+  // Lexicon Dictionary State (For English Literacy Interactive Words)
+  const [lexiconState, setLexiconState] = useState({
+    isOpen: false,
+    wordData: null,
+  });
+
+  // Active Practice Session State
+  const [activeSession, setActiveSession] = useState(null);
+  // Session results (after completion)
+  const [sessionResults, setSessionResults] = useState(null);
+  // Loading state for async operations
+  const [loading, setLoading] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const submitLock = useRef(false);
+
+  const loadProfile = useCallback(async () => {
+    setProfileError("");
+    try {
+      const [apiUser, profile] = await Promise.all([api("/me"), api("/learner/profile")]);
+      setUser((prev) => ({
+        ...prev,
+        ...profile,
+        email: apiUser?.email ?? "",
+        role: apiUser?.role ?? "user",
+        image: profile?.image ?? apiUser?.image ?? null,
+        id: `LTV-${String(apiUser?.id ?? "demo").slice(0, 4).toUpperCase()}`,
+      }));
+      setProfileLoaded(true);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Gagal memuat profil. Coba lagi.");
+    }
+  }, []);
+
+  // Synchronize sound engine
+  useEffect(() => {
+    sound.enabled = soundEnabled;
+    localStorage.setItem("latveria_sound", soundEnabled);
+  }, [soundEnabled]);
+
+  const refreshTopics = useCallback(async () => {
+    setTopicsLoading(true);
+    setTopicsError("");
+    try {
+      const data = await api("/learner/topics?all=true");
+      if (!Array.isArray(data)) throw new Error("Respons subtes tidak valid.");
+      setTopics(data.map(topicToSubject));
+    } catch {
+      setTopicsError("Gagal memuat subtes. Coba lagi.");
+    } finally {
+      setTopicsLoading(false);
+    }
+  }, []);
+
+  const refreshSummary = useCallback(async () => {
+    const data = await api("/learner/summary");
+    setSummary(data);
+    setUser((prev) => ({
+      ...prev,
+      totalXP: data.totalXP,
+      level: data.level,
+      currentXP: data.currentXP,
+      nextLevelXP: data.nextLevelXP,
+      streakDays: data.streakDays,
+      practicedToday: data.practicedToday,
+      questionsCompleted: data.answered,
+      attempts: data.attempts,
+      accuracy: data.answered ? Math.round((data.correct / data.answered) * 1000) / 10 : 0,
+      weeklyChartData: data.weeklyChartData,
+      weeklyXP: data.weeklyXP,
+      weeklyAccuracy: data.weeklyAccuracy,
+    }));
+    return data;
+  }, []);
+
+  // Synchronize with backend authenticated user + fetch topics/summary/history
   useEffect(() => {
     loadProfile();
     refreshTopics();
