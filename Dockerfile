@@ -13,10 +13,11 @@ FROM base AS build
 WORKDIR /workspace/latveria-main
 RUN bun run --filter '@latveria/web' build
 
-# Keep only production dependencies in the runtime image.
+# Use a clean install so dev dependencies are not carried into the runtime image.
 FROM base AS production-dependencies
 WORKDIR /workspace/latveria-main
-RUN bun install --frozen-lockfile --production --filter '@latveria/api' --filter '@latveria/shared'
+RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules \
+  && bun install --frozen-lockfile --production --filter '@latveria/api' --filter '@latveria/shared'
 
 FROM oven/bun:1.3.14-slim AS runtime
 ENV NODE_ENV=production PORT=10000 SERVE_WEB=true
