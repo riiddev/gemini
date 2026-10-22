@@ -29,7 +29,7 @@ export function useReducedMotion(): boolean {
 export function AnimatedNumber({
   value,
   duration = motionTokens.duration.number,
-  formatter = (n: number) => n.toLocaleString(),
+  formatter = (n: number) => (Number.isFinite(n) ? n : 0).toLocaleString(),
   className,
 }: {
   value: number;
