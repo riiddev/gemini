@@ -102,7 +102,7 @@ function CompactProfileCard({
           <div className="popup-xp-container">
             <div className="popup-xp-labels font-mono">
               <span>
-                {user.currentXP.toLocaleString()} / {user.nextLevelXP.toLocaleString()} EXP
+                {(Number(user.currentXP) || 0).toLocaleString()} / {(Number(user.nextLevelXP) || 0).toLocaleString()} EXP
               </span>
               <span>{xpPercentage}%</span>
             </div>
