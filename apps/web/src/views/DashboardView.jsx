@@ -354,7 +354,7 @@ export const DashboardView = () => {
             <div className="chart-stat-tile">
               <span className="stat-label font-mono">AKUMULASI XP</span>
               <span className="stat-val font-serif text-gold">
-                +{user.weeklyXP.toLocaleString()} EXP
+                +{(Number(user.weeklyXP) || 0).toLocaleString()} EXP
               </span>
             </div>
           </div>
