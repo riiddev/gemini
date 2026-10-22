@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "bun install --frozen-lockfile",
-  "buildCommand": "bun run --filter '@latveria/web' build",
+  "buildCommand": "VITE_DEMO_MODE=true bun run --filter '@latveria/web' build",
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
