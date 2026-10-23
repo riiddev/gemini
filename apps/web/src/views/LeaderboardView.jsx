@@ -64,11 +64,10 @@ export const LeaderboardView = () => {
   const [data, setData] = useState(null);
   const requestGateRef = useRef(null);
   if (requestGateRef.current === null) requestGateRef.current = createLatestRequestGate();
-  const requestGate = requestGateRef.current;
 
   const fetchLeaderboard = useCallback(async () => {
-    const requestId = requestGate.begin();
-    const isCurrentRequest = () => requestGate.isCurrent(requestId);
+    const requestId = requestGateRef.current.begin();
+    const isCurrentRequest = () => requestGateRef.current.isCurrent(requestId);
     const cacheKey = getCacheKey(user.id, metric, subtest, period);
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -99,7 +98,7 @@ export const LeaderboardView = () => {
     void fetchLeaderboard();
     return () => {
       // Ignore results from requests started for the previous filters or route.
-      requestGate.invalidate();
+      requestGateRef.current.invalidate();
     };
   }, [fetchLeaderboard]);
 
