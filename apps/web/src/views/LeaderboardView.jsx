@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { LatveriaSeal, LatveriaWatermark } from "../components/LatveriaSeal";
 import { api } from "../lib/api";
@@ -61,13 +61,18 @@ export const LeaderboardView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const requestVersion = useRef(0);
 
   const fetchLeaderboard = useCallback(async () => {
+    const requestId = ++requestVersion.current;
+    const isCurrentRequest = () => requestId === requestVersion.current;
     const cacheKey = getCacheKey(user.id, metric, subtest, period);
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      if (!isCurrentRequest()) return;
       setData(cached.data);
       setLoading(false);
+      setError("");
       return;
     }
 
@@ -75,18 +80,24 @@ export const LeaderboardView = () => {
     setError("");
     try {
       const result = await api(`/leaderboard?metric=${metric}&subtest=${subtest}&period=${period}`);
+      if (!isCurrentRequest()) return;
       cache.set(cacheKey, { data: result, timestamp: Date.now() });
       setData(result);
     } catch (err) {
+      if (!isCurrentRequest()) return;
       setError(err instanceof Error ? err.message : "Gagal memuat papan peringkat.");
       setData(null);
     } finally {
-      setLoading(false);
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [metric, subtest, period, user.id]);
 
   useEffect(() => {
-    fetchLeaderboard();
+    void fetchLeaderboard();
+    return () => {
+      // Ignore results from requests started for the previous filters or route.
+      requestVersion.current += 1;
+    };
   }, [fetchLeaderboard]);
 
   const handleMetricChange = (newMetric) => {
