@@ -1,0 +1,36 @@
+name: Latveria web regression tests
+
+on:
+  push:
+    branches: [main, "fix/**"]
+    paths:
+      - "apps/web/src/**"
+      - "apps/web/package.json"
+      - "packages/shared/**"
+      - "bun.lock"
+      - ".github/workflows/web-regression-tests.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/web/src/**"
+      - "apps/web/package.json"
+      - "packages/shared/**"
+      - "bun.lock"
+      - ".github/workflows/web-regression-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  web-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Install locked workspace dependencies
+        run: bun install --frozen-lockfile
+      - name: Run web tests, including leaderboard request-race regression
+        run: bun run --filter '@latveria/web' test
