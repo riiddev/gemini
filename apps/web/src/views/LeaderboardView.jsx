@@ -62,7 +62,7 @@ export const LeaderboardView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
-  const requestGateRef = useRef<ReturnType<typeof createLatestRequestGate> | null>(null);
+  const requestGateRef = useRef(null);
   if (requestGateRef.current === null) requestGateRef.current = createLatestRequestGate();
   const requestGate = requestGateRef.current;
 
