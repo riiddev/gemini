@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { LatveriaSeal, LatveriaWatermark } from "../components/LatveriaSeal";
 import { api } from "../lib/api";
+import { createLatestRequestGate } from "../lib/latest-request";
 import {
   Trophy,
   Search,
@@ -61,11 +62,13 @@ export const LeaderboardView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
-  const requestVersion = useRef(0);
+  const requestGateRef = useRef<ReturnType<typeof createLatestRequestGate> | null>(null);
+  if (requestGateRef.current === null) requestGateRef.current = createLatestRequestGate();
+  const requestGate = requestGateRef.current;
 
   const fetchLeaderboard = useCallback(async () => {
-    const requestId = ++requestVersion.current;
-    const isCurrentRequest = () => requestId === requestVersion.current;
+    const requestId = requestGate.begin();
+    const isCurrentRequest = () => requestGate.isCurrent(requestId);
     const cacheKey = getCacheKey(user.id, metric, subtest, period);
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -96,7 +99,7 @@ export const LeaderboardView = () => {
     void fetchLeaderboard();
     return () => {
       // Ignore results from requests started for the previous filters or route.
-      requestVersion.current += 1;
+      requestGate.invalidate();
     };
   }, [fetchLeaderboard]);
 
